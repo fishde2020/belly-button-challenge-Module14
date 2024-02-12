@@ -1,93 +1,85 @@
-const url = "https://2u-data-curriculum-team.s3.amazonaws.com/dataviz-classroom/v1.1/14-Interactive-Web-Visualizations/02-Homework/samples.json";
+const url = 'https://2u-data-curriculum-team.s3.amazonaws.com/dataviz-classroom/v1.1/14-Interactive-Web-Visualizations/02-Homework/samples.json'
 
-function init(){
-    d3.json(url).then(function(data) {
-    let dataset = data.names; 
-    let dropdownMenu = d3.select("#selDataset");    
-    for (let i=0; i<dataset.length; i++){
-        dropdownMenu.append("option").text(dataset[i]).property("value", dataset[i])
-    }
+// Demographic Info
+function panelInfo(id) {
+    d3.json(url).then(function (data) {
+        let sampleData = data;
+        let metadata = sampleData.metadata;
+        let identifier = metadata.filter(sample =>
+            sample.id.toString() === id)[0];
+        let panel = d3.select('#sample-metadata');
+        panel.html('');
+        Object.entries(identifier).forEach(([key, value]) => {
+            panel.append('h6').text(`${key}: ${value}`);
+        })
+    })
+};
 
-
-
-})};
-
-//BAR AND BUBBLE CHARTS
-//Call In Data
-function buildcharts (sample){
-
-
-//Set Up Data
-d3.json(url).then(function(data) {
-
-        let samples = data.samples;
-
-        let resultArray = samples.filter(sampleObj => sampleObj.id == sample);
-
-        let firstresult = resultArray[0];
-
-        let labl = firstresult.otu_labels;
-
-        let otid = firstresult.otu_ids;
-
-        let smpva = firstresult.sample_values; 
-        
-
-//Horizontal Bar Chart
-        let data1 = [{
-            x: smpva.slice(0, 10).reverse(),
-            y: otid.slice(0, 10).map(otuID => `OTU ${otuID}`).reverse(),
-            text:labl.slice(0, 10).reverse(),
+//Plots
+function Plots(id) {
+    d3.json(url).then(function (data) {
+        let sampleData = data;
+        let samples = sampleData.samples;
+        let identifier = samples.filter(sample => sample.id === id);
+        let filtered = identifier[0];
+        let OTUvalues = filtered.sample_values.slice(0, 10).reverse();
+        let OTUids = filtered.otu_ids.slice(0, 10).reverse();
+        let labels = filtered.otu_labels.slice(0, 10).reverse();
+        let barTrace = {
+            x: OTUvalues,
+            y: OTUids.map(object => 'OTU ' + object),
+            name: labels,
             type: 'bar',
-            orientation: "h"
-            }];
-    
-        Plotly.newPlot("bar", data1)
-    
-//Bubble Chart    
-        let data2 = [{
-            x: otid.slice(0, 10).reverse(),
-            y: smpva.slice(0, 10).reverse(),
-            text:labl.slice(0, 10).reverse(),
+            orientation: 'h'
+        };
+        let barLayout = {
+            title: `Top 10 OTUs for Subject ${id}`,
+            xaxis: { title: 'Sample Values' },
+            yaxis: { title: 'OTU ID' }
+        };
+        let barData = [barTrace];
+        Plotly.newPlot('bar', barData, barLayout);
+        let bubbleTrace = {
+            x: filtered.otu_ids,
+            y: filtered.sample_values,
             mode: 'markers',
-            type: 'bubble',
             marker: {
-                size: smpva.slice(0, 10).reverse(),
-                color: otid.slice(0, 10).reverse()}
-            }];
+                size: filtered.sample_values,
+                color: filtered.otu_ids,
+                colorscale: 'Portland'
+            },
+            text: filtered.otu_labels,
+        };
+        let bubbleData = [bubbleTrace];
+        let bubbleLayout = {
+            title: `OTUs for Subject ${id}`,
+            xaxis: { title: 'OTU ID' },
+            yaxis: { title: 'Sample Values' }
+        };
+        Plotly.newPlot('bubble', bubbleData, bubbleLayout);
+    })
+};
 
-        Plotly.newPlot("bubble", data2)})};
-
-       
-buildcharts("940");
-
-
-//TABLE
-//Call In Data
-function buildmetadata (sample){
-
-   
-//Set Up Data
-    d3.json(url).then(function(data) {
-
-        let metadata = data.metadata; 
-        let metadata2 = metadata.filter(Obj => Obj.id == sample);
-
-//Update Table
-        let PANEL = d3.select("#sample-metadata");
-        PANEL.html("");
-        for (key in metadata2[0]){
-            PANEL.append("h6").text(`${key.toUpperCase()}: ${metadata2[0][key]}`);
-          };
-})}; 
-
-buildmetadata("940");
-
-//Dropdown
-
+//Build new upon ID change
 function optionChanged(id) {
-    buildmetadata(id)
-    buildcharts(id)
-    };
+    Plots(id);
+    panelInfo(id);
+};
 
-init(); 
+//Test Subject Dropdown and initial function
+function init() {
+    let dropDown = d3.select('#selDataset');
+    let id = dropDown.property('value');
+    d3.json(url).then(function (data) {
+        sampleData = data;
+        let names = sampleData.names;
+        let samples = sampleData.samples;
+        Object.values(names).forEach(value => {
+            dropDown.append('option').text(value);
+        })
+        panelInfo(names[0]);
+        Plots(names[0])
+    })
+};
+
+init();
